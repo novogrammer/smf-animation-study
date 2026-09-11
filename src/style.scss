@@ -1,0 +1,22 @@
+body{
+  margin: 0;
+}
+
+#canvas{
+  /* TODO */
+}
+
+
+.p-player{
+  &__button{
+    cursor: pointer;
+    &--resume {
+    }
+  }
+  &__time{
+  }
+  &__current-time{
+  }
+  &__duration{
+  }
+}

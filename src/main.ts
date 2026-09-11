@@ -1,4 +1,4 @@
-import './style.css'
+import './style.scss'
 // import * as THREE from "three";
 
 import { Sequencer, WorkletSynthesizer } from 'spessasynth_lib';
@@ -20,14 +20,30 @@ async function mainAsync(){
   await synth.soundBankManager.addSoundBank(sfFile, "main");
   const seq = new Sequencer(synth);
   seq.loopCount = Infinity;
+  const midiFile = await loadAsArrayBufferAsync("./assets/smf/fur_Elise_WoO59.mid");
+  seq.loadNewSongList([{ binary: midiFile }]);
 
-  document.querySelector<HTMLElement>("#play")!.addEventListener("click",()=>{
+
+  const resumeElement = document.querySelector<HTMLElement>("#resume")!;
+  const currentTimeElement = document.querySelector<HTMLElement>("[data-role='current-time'")!;
+  const durationElement = document.querySelector<HTMLElement>("[data-role='duration'")!;
+
+  setInterval(()=>{
+    currentTimeElement.textContent=`${seq.currentTime.toFixed(2)}`;
+    durationElement.textContent=`${seq.duration.toFixed(2)}`;
+  },100);
+
+  resumeElement.addEventListener("click",()=>{
     (async ()=>{
-      await audioContext.resume();
-      const midiFile = await loadAsArrayBufferAsync("./assets/smf/fur_Elise_WoO59.mid");
-      seq.loadNewSongList([{ binary: midiFile }]);
-      seq.play();
-
+      
+      if(seq.paused){
+        await audioContext.resume();
+        seq.play();
+        resumeElement.textContent="Pause";
+      }else{
+        seq.pause();
+        resumeElement.textContent="Resume";
+      }
     })().catch((error)=>console.error(error));
   })
 }
