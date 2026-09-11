@@ -3,9 +3,9 @@ body{
 }
 
 #canvas{
-
+  /* TODO */
 }
 
 #play{
-  
+  cursor: pointer;
 }
