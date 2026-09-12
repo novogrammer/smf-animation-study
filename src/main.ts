@@ -40,6 +40,18 @@ async function mainAsync(){
     clearInterval(intervalTimer);
   });
 
+  const EVENT_ID_VISUALIZER="visualizer";
+  synth.eventHandler.addEvent("noteOn",EVENT_ID_VISUALIZER,(event)=>{
+    console.log("noteOn",event);
+  });
+  synth.eventHandler.addEvent("noteOff",EVENT_ID_VISUALIZER,(event)=>{
+    console.log("noteOff",event);
+  });
+  onHmrDispose(()=>{
+    synth.eventHandler.removeEvent("noteOn",EVENT_ID_VISUALIZER);
+    synth.eventHandler.removeEvent("noteOff",EVENT_ID_VISUALIZER);
+  });
+
   resumeElement.addEventListener("click",()=>{
     (async ()=>{
       
