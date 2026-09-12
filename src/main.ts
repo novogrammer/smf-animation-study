@@ -5,6 +5,10 @@ import { Sequencer, WorkletSynthesizer } from 'spessasynth_lib';
 
 import workletUrl from "spessasynth_lib/dist/spessasynth_processor.min.js?url";
 
+function onHmrDispose(dispose: () => void) {
+  import.meta.hot?.dispose(dispose);
+}
+
 async function loadAsArrayBufferAsync(url:string){
   const response = await fetch(url);
   return await response.arrayBuffer();
@@ -28,10 +32,13 @@ async function mainAsync(){
   const currentTimeElement = document.querySelector<HTMLElement>("[data-role='current-time'")!;
   const durationElement = document.querySelector<HTMLElement>("[data-role='duration'")!;
 
-  setInterval(()=>{
+  const intervalTimer=setInterval(()=>{
     currentTimeElement.textContent=seq.currentTime.toFixed(2);
     durationElement.textContent=seq.duration.toFixed(2);
   },100);
+  onHmrDispose(()=>{
+    clearInterval(intervalTimer);
+  });
 
   resumeElement.addEventListener("click",()=>{
     (async ()=>{
