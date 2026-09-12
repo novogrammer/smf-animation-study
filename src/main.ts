@@ -29,8 +29,8 @@ async function mainAsync(){
   const durationElement = document.querySelector<HTMLElement>("[data-role='duration'")!;
 
   setInterval(()=>{
-    currentTimeElement.textContent=`${seq.currentTime.toFixed(2)}`;
-    durationElement.textContent=`${seq.duration.toFixed(2)}`;
+    currentTimeElement.textContent=seq.currentTime.toFixed(2);
+    durationElement.textContent=seq.duration.toFixed(2);
   },100);
 
   resumeElement.addEventListener("click",()=>{
