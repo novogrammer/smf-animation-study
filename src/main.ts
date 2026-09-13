@@ -19,36 +19,28 @@ async function mainAsync(){
 
   const geometry = new THREE.BoxGeometry( 1, 1, 1 );
   const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-  const cube = new THREE.Mesh( geometry, material );
-  cube.scale.setScalar(0);
+  const cube = new THREE.InstancedMesh( geometry, material, 128 );
+  cube.instanceMatrix.setUsage( THREE.DynamicDrawUsage );
+  const objectDummy=new THREE.Object3D();
+  for(let i=0;i<128;i++){
+    objectDummy.scale.setScalar(0.05);
+    objectDummy.position.x=THREE.MathUtils.mapLinear(i,0,127,-5,5);
+    objectDummy.updateMatrix();
+    cube.setMatrixAt(i,objectDummy.matrix);
+  }
   scene.add( cube );
 
   camera.position.z = 5;
 
-  const state={
-    scale:0,
-  }
+  // const state={
+  //   scale:0,
+  // }
 
 
-  const timeline = gsap.timeline({
-    paused:true,
-    onUpdate:()=>{
-      cube.scale.setScalar(state.scale);
-    }
-  })
-
-
-  timeline.set(state,{
-    scale:1,
-  },0);
-  timeline.to(state,{
-    scale:0,
-    duration:0.5,
-  },0);
 
   renderer.setAnimationLoop((time)=>{
-    cube.rotation.x = time / 2000;
-    cube.rotation.y = time / 1000;
+    // cube.rotation.x = time / 2000;
+    // cube.rotation.y = time / 1000;
 
     renderer.render( scene, camera );
 
@@ -57,11 +49,22 @@ async function mainAsync(){
 
   await setupSpessasynthAsync({
     onNoteOn:(event)=>{
-      timeline.play(0);
       console.log("noteOn",event);
+      const index=THREE.MathUtils.clamp(event.midiNote,0,127);
+      objectDummy.position.x=THREE.MathUtils.mapLinear(index,0,127,-5,5);
+      objectDummy.scale.setScalar(0.1);
+      objectDummy.updateMatrix();
+      cube.setMatrixAt(index,objectDummy.matrix);
+      cube.instanceMatrix.needsUpdate=true;
     },
     onNoteOff:(event)=>{
       console.log("noteOff",event);
+      const index=THREE.MathUtils.clamp(event.midiNote,0,127);
+      objectDummy.position.x=THREE.MathUtils.mapLinear(index,0,127,-5,5);
+      objectDummy.scale.setScalar(0.05);
+      objectDummy.updateMatrix();
+      cube.setMatrixAt(index,objectDummy.matrix);
+      cube.instanceMatrix.needsUpdate=true;
     },
   });
 }
