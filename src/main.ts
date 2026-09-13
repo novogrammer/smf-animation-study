@@ -20,7 +20,7 @@ async function mainAsync(){
   const geometry = new THREE.BoxGeometry( 1, 1, 1 );
   const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
   const cube = new THREE.Mesh( geometry, material );
-  cube.scale.set(0,0,0);
+  cube.scale.setScalar(0);
   scene.add( cube );
 
   camera.position.z = 5;
@@ -33,7 +33,7 @@ async function mainAsync(){
   const timeline = gsap.timeline({
     paused:true,
     onUpdate:()=>{
-      cube.scale.set(state.scale,state.scale,state.scale);
+      cube.scale.setScalar(state.scale);
     }
   })
 
