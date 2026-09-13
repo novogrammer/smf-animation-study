@@ -10,7 +10,19 @@ async function loadAsArrayBufferAsync(url:string){
 }
 
 
-export async function setupSpessasynthAsync(timeline: gsap.core.Timeline){
+
+type NoteOnEvent = {
+  midiNote: number;
+  channel: number;
+  velocity: number;
+};
+type NoteOffEvent = {
+  midiNote: number;
+  channel: number;
+};
+
+
+export async function setupSpessasynthAsync({onNoteOn,onNoteOff}:{onNoteOn:(event:NoteOnEvent)=>void,onNoteOff:(event:NoteOffEvent)=>void}){
     const sfFile = await loadAsArrayBufferAsync("./assets/soundfonts/GeneralUser-GS/GeneralUserGS.sf3");
 
   const audioContext = new AudioContext();
@@ -37,13 +49,11 @@ export async function setupSpessasynthAsync(timeline: gsap.core.Timeline){
   });
 
   const EVENT_ID_VISUALIZER="visualizer";
-  synth.eventHandler.addEvent("noteOn",EVENT_ID_VISUALIZER,(event)=>{
-    console.log("noteOn",event);
-    timeline.play(0);
-  });
-  synth.eventHandler.addEvent("noteOff",EVENT_ID_VISUALIZER,(event)=>{
-    console.log("noteOff",event);
-  });
+  
+
+  
+  synth.eventHandler.addEvent("noteOn",EVENT_ID_VISUALIZER,onNoteOn);
+  synth.eventHandler.addEvent("noteOff",EVENT_ID_VISUALIZER,onNoteOff);
   onHmrDispose(()=>{
     synth.eventHandler.removeEvent("noteOn",EVENT_ID_VISUALIZER);
     synth.eventHandler.removeEvent("noteOff",EVENT_ID_VISUALIZER);

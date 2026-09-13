@@ -55,7 +55,15 @@ async function mainAsync(){
   })
 
 
-  await setupSpessasynthAsync(timeline);
+  await setupSpessasynthAsync({
+    onNoteOn:(event)=>{
+      timeline.play(0);
+      console.log("noteOn",event);
+    },
+    onNoteOff:(event)=>{
+      console.log("noteOff",event);
+    },
+  });
 }
 
 
