@@ -1,19 +1,27 @@
 body{
   margin: 0;
+  position:relative;
 }
 
-#canvas{
-  /* TODO */
+#view{
+  position:absolute;
+  left:0;
+  top:0;
 }
 
 
 .p-player{
+  position:relative;
   &__button{
+    background:#fff;
+    color:#000;
     cursor: pointer;
     &--resume {
     }
   }
   &__time{
+    background:#fff;
+    color:#000;
   }
   &__current-time{
   }

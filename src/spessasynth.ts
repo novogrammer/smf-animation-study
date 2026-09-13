@@ -10,7 +10,7 @@ async function loadAsArrayBufferAsync(url:string){
 }
 
 
-export async function setupSpessasynthAsync(){
+export async function setupSpessasynthAsync(timeline: gsap.core.Timeline){
     const sfFile = await loadAsArrayBufferAsync("./assets/soundfonts/GeneralUser-GS/GeneralUserGS.sf3");
 
   const audioContext = new AudioContext();
@@ -39,6 +39,7 @@ export async function setupSpessasynthAsync(){
   const EVENT_ID_VISUALIZER="visualizer";
   synth.eventHandler.addEvent("noteOn",EVENT_ID_VISUALIZER,(event)=>{
     console.log("noteOn",event);
+    timeline.play(0);
   });
   synth.eventHandler.addEvent("noteOff",EVENT_ID_VISUALIZER,(event)=>{
     console.log("noteOff",event);
