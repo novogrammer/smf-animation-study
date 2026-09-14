@@ -77,6 +77,11 @@ function calcMatrix(objectDummy: THREE.Object3D, now: number, noteState: NoteSta
 async function mainAsync() {
 
   const scene = new THREE.Scene();
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+  scene.add(ambientLight);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+  directionalLight.position.set(10, 10, 10);
+  scene.add(directionalLight);
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
   const viewElement = document.querySelector<HTMLCanvasElement>("#view")!;
@@ -84,10 +89,15 @@ async function mainAsync() {
   const renderer = new THREE.WebGLRenderer({
     canvas: viewElement,
   });
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setSize(window.innerWidth, window.innerHeight);
 
   const geometry = new THREE.BoxGeometry(1, 1, 1);
-  const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+  const material = new THREE.MeshStandardMaterial({
+    color: 0x00ff00,
+    metalness: 0,
+    roughness: 1,
+  });
   const cube = new THREE.InstancedMesh(geometry, material, 128);
   cube.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   const noteStateList: NoteState[] = [];
