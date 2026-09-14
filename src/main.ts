@@ -67,7 +67,8 @@ function calcMatrix(objectDummy: THREE.Object3D, now: number, noteState: NoteSta
   };
   const envelope = getAdsrValue(now, noteState, adsr);
 
-  const scale = envelope * noteState.velocity / 127 + 0.05;
+  const amplifier = 10;
+  const scale = envelope * noteState.velocity / 127 * amplifier + 1;
   objectDummy.scale.setScalar(scale);
   objectDummy.position.x = THREE.MathUtils.mapLinear(noteState.midiNote, 0, 127, -5, 5);
   objectDummy.updateMatrix();
@@ -92,7 +93,7 @@ async function mainAsync() {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setSize(window.innerWidth, window.innerHeight);
 
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const geometry = new THREE.BoxGeometry(0.05, 0.05, 0.05);
   const material = new THREE.MeshStandardMaterial({
     color: 0x00ff00,
     metalness: 0,
