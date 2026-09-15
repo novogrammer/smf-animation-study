@@ -43,6 +43,12 @@ class Player {
 
     this.synth.eventHandler.addEvent("noteOn", EVENT_ID_VISUALIZER, this.onNoteOn);
     this.synth.eventHandler.addEvent("noteOff", EVENT_ID_VISUALIZER, this.onNoteOff);
+    this.seq.eventHandler.addEvent("metaEvent",EVENT_ID_VISUALIZER,(event)=>{
+      if(event.event.statusByte==6){
+        const text = new TextDecoder().decode(event.event.data);
+        console.log("metaEvent Marker",text);
+      }
+    })
     onHmrDispose(() => {
       this.synth.eventHandler.removeEvent("noteOn", EVENT_ID_VISUALIZER);
       this.synth.eventHandler.removeEvent("noteOff", EVENT_ID_VISUALIZER);
@@ -85,7 +91,8 @@ export async function createPlayerAsync({ onNoteOn, onNoteOff }: { onNoteOn: (ev
   await synth.soundBankManager.addSoundBank(sfFile, "main");
   const seq = new Sequencer(synth);
   seq.loopCount = Infinity;
-  const midiFile = await loadAsArrayBufferAsync("./assets/smf/fur_Elise_WoO59.mid");
+  // const midiFile = await loadAsArrayBufferAsync("./assets/smf/fur_Elise_WoO59.mid");
+  const midiFile = await loadAsArrayBufferAsync("./assets/smf/fur_Elise_WoO59_marker.mid");
   seq.loadNewSongList([{ binary: midiFile }]);
 
   const player = new Player(audioContext, synth, seq, onNoteOn, onNoteOff);
