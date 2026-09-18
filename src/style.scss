@@ -12,16 +12,30 @@ body{
 
 .p-player{
   position:relative;
+  display:flex;
+  flex-direction: column;
+  width: 20rem;
+  padding: 0.5rem;
+  border-radius:0.5rem;
+  background:#fff;
+  color:#000;
+  &__button-list{
+    display:flex;
+    justify-content: center;
+    gap:1rem;
+  }
   &__button{
-    background:#fff;
-    color:#000;
+    display:inline-block;
     cursor: pointer;
+    border:1px solid currentColor;
+    padding:0 1rem;
+    border-radius:0.5rem;
+    text-align: center;
     &--resume {
     }
   }
   &__time{
-    background:#fff;
-    color:#000;
+    text-align: right;
   }
   &__current-time{
   }
