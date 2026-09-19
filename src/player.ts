@@ -89,7 +89,15 @@ class Player {
         return;
       }
 
-      const section = parseSectionMarker(textDecoder.decode(event.data));
+      const text = textDecoder.decode(event.data);
+      console.log("metaEvent Marker", {
+        text,
+        tick: event.ticks,
+        currentTime: this.seq.currentTime,
+        highResolutionTime: this.seq.currentHighResolutionTime,
+      });
+
+      const section = parseSectionMarker(text);
       if (section !== undefined) {
         this.setSection(section);
       }
