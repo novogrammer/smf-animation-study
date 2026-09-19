@@ -22,8 +22,8 @@ const EVENT_ID_VISUALIZER = "visualizer";
 
 class Player {
   resumeElement = document.querySelector<HTMLElement>("#resume")!;
-  currentTimeElement = document.querySelector<HTMLElement>("[data-role='current-time'")!;
-  durationElement = document.querySelector<HTMLElement>("[data-role='duration'")!;
+  currentTimeElement = document.querySelector<HTMLElement>("[data-role='current-time']")!;
+  durationElement = document.querySelector<HTMLElement>("[data-role='duration']")!;
 
   audioContext: AudioContext;
   synth: WorkletSynthesizer;
