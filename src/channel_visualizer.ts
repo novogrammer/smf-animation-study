@@ -11,9 +11,16 @@ type Adsr = {
 type ChannelVisualizerOptions = {
   channel: number;
   color: THREE.ColorRepresentation;
-  y: number;
   geometry: THREE.BufferGeometry;
   noteStates: readonly NoteState[];
+  layout: ChannelVisualizerLayout;
+};
+
+export type ChannelVisualizerLayout = {
+  noteStartX: number;
+  noteStep: number;
+  baseCubeSize: number;
+  y: number;
 };
 
 const ADSR: Adsr = {
@@ -54,14 +61,18 @@ function getAdsrValue(now: number, noteState: NoteState): number {
   return Math.max(0, releaseStartValue * (1 - t));
 }
 
-function calcMatrix(now: number, noteState: NoteState): void {
+function calcMatrix(
+  now: number,
+  noteState: NoteState,
+  layout: ChannelVisualizerLayout,
+): void {
   const envelope = getAdsrValue(now, noteState);
   const amplifier = 10;
-  const scale = envelope * noteState.velocity / 127 * amplifier + 1;
+  const animationScale = envelope * noteState.velocity / 127 * amplifier + 1;
 
-  objectDummy.scale.setScalar(scale);
+  objectDummy.scale.setScalar(layout.baseCubeSize * animationScale);
   objectDummy.position.set(
-    THREE.MathUtils.mapLinear(noteState.midiNote, 0, MIDI_NOTE_COUNT - 1, -5, 5),
+    layout.noteStartX + noteState.midiNote * layout.noteStep,
     0,
     0,
   );
@@ -74,11 +85,13 @@ export class ChannelVisualizer {
 
   private readonly material: THREE.MeshStandardMaterial;
   private readonly noteStates: readonly NoteState[];
+  private layout: ChannelVisualizerLayout;
   private disposed = false;
 
-  constructor({ channel, color, y, geometry, noteStates }: ChannelVisualizerOptions) {
+  constructor({ channel, color, geometry, noteStates, layout }: ChannelVisualizerOptions) {
     this.channel = channel;
     this.noteStates = noteStates;
+    this.layout = layout;
     this.material = new THREE.MeshStandardMaterial({
       color,
       metalness: 0,
@@ -86,8 +99,13 @@ export class ChannelVisualizer {
     });
     this.mesh = new THREE.InstancedMesh(geometry, this.material, MIDI_NOTE_COUNT);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.mesh.position.y = y;
+    this.mesh.position.y = layout.y;
     this.update(0);
+  }
+
+  setLayout(layout: ChannelVisualizerLayout): void {
+    this.layout = layout;
+    this.mesh.position.y = layout.y;
   }
 
   update(now: number): void {
@@ -100,7 +118,7 @@ export class ChannelVisualizer {
       if (!noteState) {
         continue;
       }
-      calcMatrix(now, noteState);
+      calcMatrix(now, noteState, this.layout);
       this.mesh.setMatrixAt(midiNote, objectDummy.matrix);
     }
     this.mesh.instanceMatrix.needsUpdate = true;

@@ -1,16 +1,22 @@
 import { createPlayerAsync } from './player';
 import { onHmrDispose } from './hmr_utils';
-import { ChannelVisualizer } from './channel_visualizer';
-import { MidiNoteStateStore } from './midi_note_state';
+import { ChannelVisualizer, type ChannelVisualizerLayout } from './channel_visualizer';
+import { MIDI_NOTE_COUNT, MidiNoteStateStore } from './midi_note_state';
 import './style.scss'
 import * as THREE from "three";
 
 // import gsap from "gsap";
 
 const DISPLAY_CHANNELS = [
-  { channel: 0, color: 0x00ff00, y: 0.4 },
-  { channel: 1, color: 0x00aaff, y: -0.4 },
+  { channel: 0, color: 0x00ff00 },
+  { channel: 1, color: 0x00aaff },
 ] as const;
+
+const VISUALIZATION_PLANE_Z = 0;
+const MIN_VIEW_SIZE = 2;
+const HORIZONTAL_PADDING_RATIO = 0.08;
+const BASE_CUBE_SIZE_RATIO = 0.01;
+const LANE_GAP_RATIO = 0.12;
 
 async function mainAsync() {
 
@@ -29,6 +35,7 @@ async function mainAsync() {
   directionalLight.position.set(10, 10, 10);
   scene.add(directionalLight);
   const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+  camera.position.z = 5;
 
   const viewElement = document.querySelector<HTMLCanvasElement>("#view")!;
 
@@ -37,33 +44,63 @@ async function mainAsync() {
   });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
+  const viewSize = new THREE.Vector2();
+  let channelVisualizers: ChannelVisualizer[] = [];
+
+  const createChannelLayout = (channelIndex: number): ChannelVisualizerLayout => {
+    const sceneUnit = Math.min(viewSize.x, viewSize.y);
+    const horizontalPadding = sceneUnit * HORIZONTAL_PADDING_RATIO;
+    const usableWidth = viewSize.x - horizontalPadding * 2;
+    const laneGap = sceneUnit * LANE_GAP_RATIO;
+    const laneOffset = (DISPLAY_CHANNELS.length - 1) / 2 - channelIndex;
+
+    return {
+      noteStartX: -usableWidth / 2,
+      noteStep: usableWidth / (MIDI_NOTE_COUNT - 1),
+      baseCubeSize: sceneUnit * BASE_CUBE_SIZE_RATIO,
+      y: laneOffset * laneGap,
+    };
+  };
+
   const handleResize = () => {
     const width = window.innerWidth;
     const height = window.innerHeight;
-    camera.aspect = width / height;
+    const aspect = width / height;
+    const distance = camera.position.z - VISUALIZATION_PLANE_Z;
+    const requiredViewHeight = aspect >= 1
+      ? MIN_VIEW_SIZE
+      : MIN_VIEW_SIZE / aspect;
+
+    camera.aspect = aspect;
+    camera.fov = THREE.MathUtils.radToDeg(
+      2 * Math.atan(requiredViewHeight / (2 * distance)),
+    );
     camera.updateProjectionMatrix();
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
+    camera.getViewSize(distance, viewSize);
+
+    channelVisualizers.forEach((visualizer, index) => {
+      visualizer.setLayout(createChannelLayout(index));
+    });
   };
   handleResize();
-  window.addEventListener("resize", handleResize);
 
   const noteStateStore = new MidiNoteStateStore();
 
-  const geometry = new THREE.BoxGeometry(0.05, 0.05, 0.05);
-  const channelVisualizers: ChannelVisualizer[] = DISPLAY_CHANNELS.map(({ channel, color, y }) => {
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  channelVisualizers = DISPLAY_CHANNELS.map(({ channel, color }, index) => {
     const visualizer = new ChannelVisualizer({
       channel,
       color,
-      y,
       geometry,
       noteStates: noteStateStore.getChannel(channel),
+      layout: createChannelLayout(index),
     });
     scene.add(visualizer.mesh);
     return visualizer;
   });
-
-  camera.position.z = 5;
+  window.addEventListener("resize", handleResize);
 
   // const state={
   //   scale:0,
