@@ -1,98 +1,16 @@
 import { createPlayerAsync } from './player';
 import { onHmrDispose } from './hmr_utils';
+import { ChannelVisualizer, MIDI_NOTE_COUNT, type NoteState } from './channel_visualizer';
 import './style.scss'
 import * as THREE from "three";
 
 // import gsap from "gsap";
 
-type Adsr = {
-  attack: number;
-  decay: number;
-  sustain: number;
-  release: number;
-};
-
-
-interface NoteState {
-  channel: number;
-  midiNote: number;
-  startedAt: number | null;
-  releasedAt: number | null;
-  velocity: number;
-}
-
-type ChannelVisualizer = {
-  channel: number;
-  mesh: THREE.InstancedMesh;
-  material: THREE.MeshStandardMaterial;
-};
-
 const MIDI_CHANNEL_COUNT = 16;
-const MIDI_NOTE_COUNT = 128;
 const DISPLAY_CHANNELS = [
   { channel: 0, color: 0x00ff00, y: 0.4 },
   { channel: 1, color: 0x00aaff, y: -0.4 },
 ] as const;
-
-function getAdsrValue(
-  now: number,
-  noteState: NoteState,
-  adsr: Adsr,
-): number {
-  if (noteState.startedAt === null) {
-    return 0;
-  }
-  const attackEnd = noteState.startedAt + adsr.attack;
-  const decayEnd = attackEnd + adsr.decay;
-
-  if (noteState.releasedAt === null || now < noteState.releasedAt) {
-    if (now < attackEnd) {
-      return (now - noteState.startedAt) / adsr.attack;
-    }
-
-    if (now < decayEnd) {
-      const t = (now - attackEnd) / adsr.decay;
-      return 1 + (adsr.sustain - 1) * t;
-    }
-
-    return adsr.sustain;
-  }
-
-  // releaseされてなかった場合の値
-  const releaseStartValue = getAdsrValue(
-    noteState.releasedAt,
-    {
-      ...noteState,
-      releasedAt: null,
-    },
-    adsr,
-  );
-
-  const t = (now - noteState.releasedAt) / adsr.release;
-
-  return Math.max(0, releaseStartValue * (1 - t));
-}
-
-function calcMatrix(objectDummy: THREE.Object3D, now: number, noteState: NoteState) {
-  const adsr: Adsr = {
-    attack: 0.08,
-    decay: 0.15,
-    sustain: 0.6,
-    release: 0.3,
-  };
-  const envelope = getAdsrValue(now, noteState, adsr);
-
-  const amplifier = 10;
-  const scale = envelope * noteState.velocity / 127 * amplifier + 1;
-  objectDummy.scale.setScalar(scale);
-  objectDummy.position.set(
-    THREE.MathUtils.mapLinear(noteState.midiNote, 0, MIDI_NOTE_COUNT - 1, -5, 5),
-    0,
-    0,
-  );
-  objectDummy.updateMatrix();
-
-}
 
 async function mainAsync() {
 
@@ -145,29 +63,16 @@ async function mainAsync() {
   );
 
   const geometry = new THREE.BoxGeometry(0.05, 0.05, 0.05);
-  const objectDummy = new THREE.Object3D();
   const channelVisualizers: ChannelVisualizer[] = DISPLAY_CHANNELS.map(({ channel, color, y }) => {
-    const material = new THREE.MeshStandardMaterial({
+    const visualizer = new ChannelVisualizer({
+      channel,
       color,
-      metalness: 0,
-      roughness: 1,
+      y,
+      geometry,
+      noteStates: noteStates[channel],
     });
-    const mesh = new THREE.InstancedMesh(geometry, material, MIDI_NOTE_COUNT);
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    mesh.position.y = y;
-
-    const channelStates = noteStates[channel];
-    for (let midiNote = 0; midiNote < MIDI_NOTE_COUNT; midiNote++) {
-      const noteState = channelStates?.[midiNote];
-      if (!noteState) {
-        continue;
-      }
-      calcMatrix(objectDummy, 0, noteState);
-      mesh.setMatrixAt(midiNote, objectDummy.matrix);
-    }
-
-    scene.add(mesh);
-    return { channel, mesh, material };
+    scene.add(visualizer.mesh);
+    return visualizer;
   });
 
   const warnedInvalidNoteEvents = new Set<string>();
@@ -202,10 +107,10 @@ async function mainAsync() {
     window.removeEventListener("resize", handleResize);
     renderer.setAnimationLoop(null);
 
-    geometry.dispose();
     for (const visualizer of channelVisualizers) {
-      visualizer.material.dispose();
+      visualizer.dispose();
     }
+    geometry.dispose();
     renderer.dispose();
 
     await player?.dispose();
@@ -242,19 +147,7 @@ async function mainAsync() {
   renderer.setAnimationLoop(() => {
     const now = activePlayer.seq.currentHighResolutionTime;
     for (const visualizer of channelVisualizers) {
-      const channelStates = noteStates[visualizer.channel];
-      if (!channelStates) {
-        continue;
-      }
-      for (let midiNote = 0; midiNote < MIDI_NOTE_COUNT; midiNote++) {
-        const noteState = channelStates[midiNote];
-        if (!noteState) {
-          continue;
-        }
-        calcMatrix(objectDummy, now, noteState);
-        visualizer.mesh.setMatrixAt(midiNote, objectDummy.matrix);
-      }
-      visualizer.mesh.instanceMatrix.needsUpdate = true;
+      visualizer.update(now);
     }
 
     renderer.render(scene, camera);
