@@ -9,7 +9,8 @@ import * as THREE from "three";
 
 const DISPLAY_CHANNELS = [
   { channel: 0, color: 0x00ff00 },
-  { channel: 1, color: 0x00aaff },
+  { channel: 1, color: 0x0000ff },
+  { channel: 9, color: 0xff0000 },
 ] as const;
 
 const VISUALIZATION_PLANE_Z = 0;
