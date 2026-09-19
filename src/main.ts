@@ -83,7 +83,7 @@ async function mainAsync() {
   const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
   directionalLight.position.set(10, 10, 10);
   scene.add(directionalLight);
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
 
   const viewElement = document.querySelector<HTMLCanvasElement>("#view")!;
 
@@ -91,7 +91,17 @@ async function mainAsync() {
     canvas: viewElement,
   });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const handleResize = () => {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(width, height);
+  };
+  handleResize();
+  window.addEventListener("resize", handleResize);
 
   const geometry = new THREE.BoxGeometry(0.05, 0.05, 0.05);
   const material = new THREE.MeshStandardMaterial({
