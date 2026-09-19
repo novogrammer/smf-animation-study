@@ -1,4 +1,5 @@
 import { createPlayerAsync } from './player';
+import { onHmrDispose } from './hmr_utils';
 import './style.scss'
 import * as THREE from "three";
 
@@ -135,14 +136,30 @@ async function mainAsync() {
   // }
 
 
-  const player = await createPlayerAsync({
+  let player: Awaited<ReturnType<typeof createPlayerAsync>> | undefined;
+  let disposed = false;
+  const getCurrentTime = () => player?.seq.currentHighResolutionTime ?? 0;
+
+  onHmrDispose(async () => {
+    disposed = true;
+    window.removeEventListener("resize", handleResize);
+    renderer.setAnimationLoop(null);
+
+    geometry.dispose();
+    material.dispose();
+    renderer.dispose();
+
+    await player?.dispose();
+  });
+
+  player = await createPlayerAsync({
     onNoteOn: (event) => {
       console.log("noteOn", event);
       const noteState = noteStateList[event.midiNote];
       if (!noteState) {
         throw new Error("noteState is null");
       }
-      noteState.startedAt = player.seq.currentHighResolutionTime;
+      noteState.startedAt = getCurrentTime();
       noteState.releasedAt = null;
       noteState.velocity = event.velocity;
     },
@@ -153,9 +170,15 @@ async function mainAsync() {
       if (!noteState) {
         throw new Error("noteState is null");
       }
-      noteState.releasedAt = player.seq.currentHighResolutionTime;
+      noteState.releasedAt = getCurrentTime();
     },
   });
+
+  if (disposed) {
+    await player.dispose();
+    return;
+  }
+  const activePlayer = player;
 
   renderer.setAnimationLoop(() => {
     for (let i = 0; i < 128; i++) {
@@ -163,7 +186,7 @@ async function mainAsync() {
       if (!noteState) {
         throw new Error("noteState is null");
       }
-      calcMatrix(objectDummy, player.seq.currentHighResolutionTime, noteState);
+      calcMatrix(objectDummy, activePlayer.seq.currentHighResolutionTime, noteState);
       cube.setMatrixAt(i, objectDummy.matrix);
     }
     cube.instanceMatrix.needsUpdate = true;
@@ -177,4 +200,3 @@ async function mainAsync() {
 
 
 mainAsync().catch((error) => console.error(error));
-

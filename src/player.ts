@@ -1,7 +1,6 @@
 import { Sequencer, WorkletSynthesizer } from 'spessasynth_lib';
 
 import workletUrl from "spessasynth_lib/dist/spessasynth_processor.min.js?url";
-import { onHmrDispose } from './hmr_utils';
 
 async function loadAsArrayBufferAsync(url: string) {
   const response = await fetch(url);
@@ -30,6 +29,12 @@ class Player {
   seq: Sequencer;
   onNoteOn: (event: NoteOnEvent) => void;
   onNoteOff: (event: NoteOffEvent) => void;
+  private intervalTimer: number | undefined;
+  private disposed = false;
+
+  private readonly handleResumeClick = () => {
+    this.togglePlaybackAsync().catch((error) => console.error(error));
+  };
 
   constructor(audioContext: AudioContext, synth: WorkletSynthesizer, seq: Sequencer, onNoteOn: (event: NoteOnEvent) => void, onNoteOff: (event: NoteOffEvent) => void) {
     this.audioContext = audioContext;
@@ -49,33 +54,49 @@ class Player {
         console.log("metaEvent Marker",text);
       }
     })
-    onHmrDispose(() => {
-      this.synth.eventHandler.removeEvent("noteOn", EVENT_ID_VISUALIZER);
-      this.synth.eventHandler.removeEvent("noteOff", EVENT_ID_VISUALIZER);
-    });
-
-
-    const intervalTimer = setInterval(() => {
+    this.intervalTimer = window.setInterval(() => {
       this.currentTimeElement.textContent = this.seq.currentTime.toFixed(2);
       this.durationElement.textContent = this.seq.duration.toFixed(2);
     }, 100);
-    onHmrDispose(() => {
-      clearInterval(intervalTimer);
-    });
+    this.resumeElement.addEventListener("click", this.handleResumeClick);
 
-    this.resumeElement.addEventListener("click", () => {
-      (async () => {
+  }
 
-        if (this.seq.paused) {
-          await this.audioContext.resume();
-          this.seq.play();
-          this.resumeElement.textContent = "Pause";
-        } else {
-          this.seq.pause();
-          this.resumeElement.textContent = "Resume";
-        }
-      })().catch((error) => console.error(error));
-    })
+  private async togglePlaybackAsync() {
+    if (this.seq.paused) {
+      await this.audioContext.resume();
+      this.seq.play();
+      this.resumeElement.textContent = "Pause";
+    } else {
+      this.seq.pause();
+      this.resumeElement.textContent = "Resume";
+    }
+  }
+
+  async dispose() {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+
+    this.seq.pause();
+    this.synth.eventHandler.removeEvent("noteOn", EVENT_ID_VISUALIZER);
+    this.synth.eventHandler.removeEvent("noteOff", EVENT_ID_VISUALIZER);
+    this.seq.eventHandler.removeEvent("metaEvent", EVENT_ID_VISUALIZER);
+    this.resumeElement.removeEventListener("click", this.handleResumeClick);
+
+    if (this.intervalTimer !== undefined) {
+      clearInterval(this.intervalTimer);
+      this.intervalTimer = undefined;
+    }
+
+    this.synth.stopAll(true);
+    this.synth.disconnect();
+    this.synth.destroy();
+
+    if (this.audioContext.state !== "closed") {
+      await this.audioContext.close();
+    }
 
   }
 }
@@ -99,4 +120,3 @@ export async function createPlayerAsync({ onNoteOn, onNoteOff }: { onNoteOn: (ev
 
   return player;
 }
-
