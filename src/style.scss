@@ -25,6 +25,7 @@ body{
   border-radius:0.5rem;
   background:#fff;
   color:#000;
+  border:1px solid currentColor;
   &__button-list{
     display:flex;
     justify-content: center;
