@@ -14,11 +14,25 @@ type Adsr = {
 
 
 interface NoteState {
-  midiNote: number,
+  channel: number;
+  midiNote: number;
   startedAt: number | null;
   releasedAt: number | null;
   velocity: number;
 }
+
+type ChannelVisualizer = {
+  channel: number;
+  mesh: THREE.InstancedMesh;
+  material: THREE.MeshStandardMaterial;
+};
+
+const MIDI_CHANNEL_COUNT = 16;
+const MIDI_NOTE_COUNT = 128;
+const DISPLAY_CHANNELS = [
+  { channel: 0, color: 0x00ff00, y: 0.4 },
+  { channel: 1, color: 0x00aaff, y: -0.4 },
+] as const;
 
 function getAdsrValue(
   now: number,
@@ -71,7 +85,11 @@ function calcMatrix(objectDummy: THREE.Object3D, now: number, noteState: NoteSta
   const amplifier = 10;
   const scale = envelope * noteState.velocity / 127 * amplifier + 1;
   objectDummy.scale.setScalar(scale);
-  objectDummy.position.x = THREE.MathUtils.mapLinear(noteState.midiNote, 0, 127, -5, 5);
+  objectDummy.position.set(
+    THREE.MathUtils.mapLinear(noteState.midiNote, 0, MIDI_NOTE_COUNT - 1, -5, 5),
+    0,
+    0,
+  );
   objectDummy.updateMatrix();
 
 }
@@ -112,30 +130,61 @@ async function mainAsync() {
   handleResize();
   window.addEventListener("resize", handleResize);
 
+  const noteStates: NoteState[][] = Array.from(
+    { length: MIDI_CHANNEL_COUNT },
+    (_, channel) => Array.from(
+      { length: MIDI_NOTE_COUNT },
+      (_, midiNote): NoteState => ({
+        channel,
+        midiNote,
+        startedAt: null,
+        releasedAt: null,
+        velocity: 0,
+      }),
+    ),
+  );
+
   const geometry = new THREE.BoxGeometry(0.05, 0.05, 0.05);
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x00ff00,
-    metalness: 0,
-    roughness: 1,
-  });
-  const cube = new THREE.InstancedMesh(geometry, material, 128);
-  cube.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  const noteStateList: NoteState[] = [];
-
-
   const objectDummy = new THREE.Object3D();
-  for (let i = 0; i < 128; i++) {
-    const noteState: NoteState = {
-      midiNote: i,
-      startedAt: null,
-      releasedAt: null,
-      velocity: 0,
+  const channelVisualizers: ChannelVisualizer[] = DISPLAY_CHANNELS.map(({ channel, color, y }) => {
+    const material = new THREE.MeshStandardMaterial({
+      color,
+      metalness: 0,
+      roughness: 1,
+    });
+    const mesh = new THREE.InstancedMesh(geometry, material, MIDI_NOTE_COUNT);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.position.y = y;
+
+    const channelStates = noteStates[channel];
+    for (let midiNote = 0; midiNote < MIDI_NOTE_COUNT; midiNote++) {
+      const noteState = channelStates?.[midiNote];
+      if (!noteState) {
+        continue;
+      }
+      calcMatrix(objectDummy, 0, noteState);
+      mesh.setMatrixAt(midiNote, objectDummy.matrix);
     }
-    calcMatrix(objectDummy, 0, noteState);
-    cube.setMatrixAt(i, objectDummy.matrix);
-    noteStateList.push(noteState);
-  }
-  scene.add(cube);
+
+    scene.add(mesh);
+    return { channel, mesh, material };
+  });
+
+  const warnedInvalidNoteEvents = new Set<string>();
+  const getNoteState = (channel: number, midiNote: number): NoteState | undefined => {
+    const noteState = noteStates[channel]?.[midiNote];
+    if (!noteState) {
+      const warningKey = `${channel}:${midiNote}`;
+      if (!warnedInvalidNoteEvents.has(warningKey)) {
+        warnedInvalidNoteEvents.add(warningKey);
+        console.warn("Ignoring MIDI note event outside the supported range", {
+          channel,
+          midiNote,
+        });
+      }
+    }
+    return noteState;
+  };
 
   camera.position.z = 5;
 
@@ -154,7 +203,9 @@ async function mainAsync() {
     renderer.setAnimationLoop(null);
 
     geometry.dispose();
-    material.dispose();
+    for (const visualizer of channelVisualizers) {
+      visualizer.material.dispose();
+    }
     renderer.dispose();
 
     await player?.dispose();
@@ -163,9 +214,9 @@ async function mainAsync() {
   player = await createPlayerAsync({
     onNoteOn: (event) => {
       console.log("noteOn", event);
-      const noteState = noteStateList[event.midiNote];
+      const noteState = getNoteState(event.channel, event.midiNote);
       if (!noteState) {
-        throw new Error("noteState is null");
+        return;
       }
       noteState.startedAt = getCurrentTime();
       noteState.releasedAt = null;
@@ -174,9 +225,9 @@ async function mainAsync() {
     onNoteOff: (event) => {
       console.log("noteOff", event);
 
-      const noteState = noteStateList[event.midiNote];
+      const noteState = getNoteState(event.channel, event.midiNote);
       if (!noteState) {
-        throw new Error("noteState is null");
+        return;
       }
       noteState.releasedAt = getCurrentTime();
     },
@@ -189,15 +240,22 @@ async function mainAsync() {
   const activePlayer = player;
 
   renderer.setAnimationLoop(() => {
-    for (let i = 0; i < 128; i++) {
-      const noteState = noteStateList[i];
-      if (!noteState) {
-        throw new Error("noteState is null");
+    const now = activePlayer.seq.currentHighResolutionTime;
+    for (const visualizer of channelVisualizers) {
+      const channelStates = noteStates[visualizer.channel];
+      if (!channelStates) {
+        continue;
       }
-      calcMatrix(objectDummy, activePlayer.seq.currentHighResolutionTime, noteState);
-      cube.setMatrixAt(i, objectDummy.matrix);
+      for (let midiNote = 0; midiNote < MIDI_NOTE_COUNT; midiNote++) {
+        const noteState = channelStates[midiNote];
+        if (!noteState) {
+          continue;
+        }
+        calcMatrix(objectDummy, now, noteState);
+        visualizer.mesh.setMatrixAt(midiNote, objectDummy.matrix);
+      }
+      visualizer.mesh.instanceMatrix.needsUpdate = true;
     }
-    cube.instanceMatrix.needsUpdate = true;
 
     renderer.render(scene, camera);
 
