@@ -10,8 +10,8 @@ import * as THREE from "three";
 // import gsap from "gsap";
 
 const DISPLAY_CHANNELS = [
-  { channel: 0, color: 0x00ff00 },
-  { channel: 1, color: 0x0000ff },
+  { channel: 0, color: 0x0000ff },
+  { channel: 1, color: 0x00ff00 },
   { channel: 9, color: 0xff0000 },
 ] as const;
 
