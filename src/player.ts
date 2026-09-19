@@ -20,6 +20,12 @@ export type NoteOffEvent = {
   channel: number;
 };
 
+type PlayerEventHandlers = {
+  onNoteOn: (event: NoteOnEvent) => void;
+  onNoteOff: (event: NoteOffEvent) => void;
+  onTimeChange: (time: number) => void;
+};
+
 const EVENT_ID_VISUALIZER = "visualizer";
 
 class Player {
@@ -33,6 +39,7 @@ class Player {
   seq: Sequencer;
   onNoteOn: (event: NoteOnEvent) => void;
   onNoteOff: (event: NoteOffEvent) => void;
+  onTimeChange: (time: number) => void;
   private intervalTimer: number | undefined;
   private disposed = false;
 
@@ -45,18 +52,25 @@ class Player {
     });
   };
 
-  constructor(audioContext: AudioContext, synth: WorkletSynthesizer, seq: Sequencer, onNoteOn: (event: NoteOnEvent) => void, onNoteOff: (event: NoteOffEvent) => void) {
+  constructor(
+    audioContext: AudioContext,
+    synth: WorkletSynthesizer,
+    seq: Sequencer,
+    { onNoteOn, onNoteOff, onTimeChange }: PlayerEventHandlers,
+  ) {
     this.audioContext = audioContext;
     this.synth = synth;
     this.seq = seq;
     this.onNoteOn = onNoteOn;
     this.onNoteOff = onNoteOff;
+    this.onTimeChange = onTimeChange;
     this.setupEvents();
   }
   setupEvents() {
 
     this.synth.eventHandler.addEvent("noteOn", EVENT_ID_VISUALIZER, this.onNoteOn);
     this.synth.eventHandler.addEvent("noteOff", EVENT_ID_VISUALIZER, this.onNoteOff);
+    this.seq.eventHandler.addEvent("timeChange", EVENT_ID_VISUALIZER, this.onTimeChange);
     this.seq.eventHandler.addEvent("metaEvent",EVENT_ID_VISUALIZER,(event)=>{
       if(event.event.statusByte==6){
         const text = new TextDecoder().decode(event.event.data);
@@ -111,6 +125,7 @@ class Player {
     this.seq.pause();
     this.synth.eventHandler.removeEvent("noteOn", EVENT_ID_VISUALIZER);
     this.synth.eventHandler.removeEvent("noteOff", EVENT_ID_VISUALIZER);
+    this.seq.eventHandler.removeEvent("timeChange", EVENT_ID_VISUALIZER);
     this.seq.eventHandler.removeEvent("metaEvent", EVENT_ID_VISUALIZER);
     this.resumeElement.removeEventListener("click", this.handleResumeClick);
     this.resumeElement.disabled = true;
@@ -133,7 +148,7 @@ class Player {
 }
 
 
-export async function createPlayerAsync({ onNoteOn, onNoteOff }: { onNoteOn: (event: NoteOnEvent) => void, onNoteOff: (event: NoteOffEvent) => void }): Promise<Player> {
+export async function createPlayerAsync(eventHandlers: PlayerEventHandlers): Promise<Player> {
   const sfFile = await loadAsArrayBufferAsync("./assets/soundfonts/GeneralUser-GS/GeneralUserGS.sf3");
 
   const audioContext = new AudioContext();
@@ -150,7 +165,7 @@ export async function createPlayerAsync({ onNoteOn, onNoteOff }: { onNoteOn: (ev
     const midiFile = await loadAsArrayBufferAsync("./assets/smf/When_the_Saints_Go_Marching_In--novo.mid");
     seq.loadNewSongList([{ binary: midiFile }]);
 
-    return new Player(audioContext, synth, seq, onNoteOn, onNoteOff);
+    return new Player(audioContext, synth, seq, eventHandlers);
   } catch (error) {
     synth?.disconnect();
     synth?.destroy();

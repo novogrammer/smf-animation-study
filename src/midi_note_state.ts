@@ -47,6 +47,16 @@ export class MidiNoteStateStore {
     noteState.releasedAt = now;
   }
 
+  reset(): void {
+    for (const channel of this.channels) {
+      for (const noteState of channel) {
+        noteState.startedAt = null;
+        noteState.releasedAt = null;
+        noteState.velocity = 0;
+      }
+    }
+  }
+
   getChannel(channel: number): readonly NoteState[] {
     const noteStates = this.channels[channel];
     if (!noteStates) {

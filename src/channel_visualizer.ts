@@ -33,7 +33,7 @@ const ADSR: Adsr = {
 const objectDummy = new THREE.Object3D();
 
 function getAdsrValue(now: number, noteState: NoteState): number {
-  if (noteState.startedAt === null) {
+  if (noteState.startedAt === null || now < noteState.startedAt) {
     return 0;
   }
   const attackEnd = noteState.startedAt + ADSR.attack;

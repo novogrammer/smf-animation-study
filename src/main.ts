@@ -140,6 +140,9 @@ async function mainAsync() {
       console.log("noteOff", event);
       noteStateStore.noteOff(event.channel, event.midiNote, getCurrentTime());
     },
+    onTimeChange: () => {
+      noteStateStore.reset();
+    },
   });
 
   if (disposed) {
