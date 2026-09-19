@@ -33,7 +33,7 @@ async function mainAsync() {
 
   const scene = new THREE.Scene();
   const stageRoom = new StageRoom();
-  scene.add(stageRoom.mesh);
+  scene.add(stageRoom.object);
   const ambientLight = new THREE.AmbientLight(0xffffff, 1);
   scene.add(ambientLight);
   const pointLight1 = new THREE.PointLight(0xffffff,100);
