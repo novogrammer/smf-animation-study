@@ -10,7 +10,7 @@ type CameraPreset = {
   duration: number;
 };
 
-export const BASE_CAMERA_DISTANCE = 5;
+export const BASE_CAMERA_DISTANCE = 5.8;
 
 const CAMERA_PRESETS: Record<SectionName, CameraPreset> = {
   intro: {
@@ -20,27 +20,27 @@ const CAMERA_PRESETS: Record<SectionName, CameraPreset> = {
     duration: 2.8,
   },
   call: {
-    position: [-0.45, 0.15, 4.8],
-    target: [-0.12, 0.05, 0],
-    fovScale: 0.96,
+    position: [-1.1, 0.45, 4.3],
+    target: [0.1, 0.05, 0],
+    fovScale: 0.9,
     duration: 1.4,
   },
   response: {
-    position: [0.45, -0.1, 4.8],
-    target: [0.12, -0.03, 0],
-    fovScale: 0.96,
+    position: [1.1, -0.35, 4.3],
+    target: [-0.1, -0.03, 0],
+    fovScale: 0.9,
     duration: 1.4,
   },
   march: {
-    position: [0, -0.22, 4.6],
-    target: [0, 0.08, 0],
-    fovScale: 0.92,
+    position: [0, -0.55, 4],
+    target: [0, 0.12, 0],
+    fovScale: 0.84,
     duration: 1.6,
   },
   finale: {
-    position: [0, 0.18, 5.6],
+    position: [0, 0.45, 6.2],
     target: [0, 0, 0],
-    fovScale: 1.04,
+    fovScale: 1.08,
     duration: 2.2,
   },
 };
