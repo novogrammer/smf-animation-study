@@ -34,11 +34,20 @@ async function mainAsync() {
   const scene = new THREE.Scene();
   const stageRoom = new StageRoom();
   scene.add(stageRoom.mesh);
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 1);
   scene.add(ambientLight);
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
-  directionalLight.position.set(10, 10, 10);
-  scene.add(directionalLight);
+  const pointLight1 = new THREE.PointLight(0xffffff,100);
+  pointLight1.position.set(0,3,3);
+  scene.add(pointLight1);
+  const pointLight2 = new THREE.PointLight(0x0000ff,30);
+  pointLight2.position.set(5,3,1);
+  scene.add(pointLight2);
+  const pointLight3 = new THREE.PointLight(0xff0000,30);
+  pointLight3.position.set(-5,3,1);
+  scene.add(pointLight3);
+  // const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
+  // directionalLight.position.set(20, 30, 10);
+  // scene.add(directionalLight);
   const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
   const cameraDirector = new CameraDirector(camera);
 
