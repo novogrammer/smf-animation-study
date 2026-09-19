@@ -13,6 +13,12 @@ export type SectionMarker = {
   time: number;
 };
 
+export type SectionRange = {
+  section: SectionName;
+  startTime: number;
+  endTime: number;
+};
+
 const sectionNames = new Set<string>(SECTION_NAMES);
 const SECTION_PREFIX = "section:";
 

@@ -145,8 +145,8 @@ async function mainAsync() {
     onTimeChange: () => {
       noteStateStore.reset();
     },
-    onSectionChange: (section) => {
-      cameraDirector.enterSection(section);
+    onSectionChange: (sectionRange) => {
+      cameraDirector.enterSection(sectionRange);
     },
   });
 
@@ -158,6 +158,7 @@ async function mainAsync() {
 
   renderer.setAnimationLoop(() => {
     const now = activePlayer.seq.currentHighResolutionTime;
+    cameraDirector.update(now);
     for (const visualizer of channelVisualizers) {
       visualizer.update(now);
     }

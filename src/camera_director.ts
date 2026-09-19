@@ -1,7 +1,7 @@
 import gsap from "gsap";
 import * as THREE from "three";
 
-import type { SectionName } from "./section";
+import type { SectionName, SectionRange } from "./section";
 
 type CameraPreset = {
   position: readonly [number, number, number];
@@ -45,11 +45,20 @@ const CAMERA_PRESETS: Record<SectionName, CameraPreset> = {
   },
 };
 
+const NEXT_SECTION: Record<SectionName, SectionName> = {
+  intro: "call",
+  call: "response",
+  response: "march",
+  march: "finale",
+  finale: "intro",
+};
+
 export class CameraDirector {
   private readonly camera: THREE.PerspectiveCamera;
   private readonly target = new THREE.Vector3();
   private baseFov = 75;
   private currentSection: SectionName = "intro";
+  private sectionRange: SectionRange | undefined;
 
   constructor(camera: THREE.PerspectiveCamera) {
     this.camera = camera;
@@ -62,19 +71,17 @@ export class CameraDirector {
     this.camera.updateProjectionMatrix();
   }
 
-  enterSection(section: SectionName, immediate = false) {
-    if (section === this.currentSection && !immediate) {
+  enterSection(sectionRange: SectionRange) {
+    const section = sectionRange.section;
+    const sectionChanged = section !== this.currentSection;
+    this.sectionRange = sectionRange;
+    this.currentSection = section;
+    if (!sectionChanged) {
       return;
     }
 
-    this.currentSection = section;
     const preset = this.getPreset(section);
     this.killTweens();
-
-    if (immediate) {
-      this.applyPreset(section);
-      return;
-    }
 
     const animationOptions = {
       duration: preset.duration,
@@ -83,12 +90,6 @@ export class CameraDirector {
       onUpdate: () => this.camera.lookAt(this.target),
     };
 
-    gsap.to(this.camera.position, {
-      x: preset.position[0],
-      y: preset.position[1],
-      z: preset.position[2],
-      ...animationOptions,
-    });
     gsap.to(this.target, {
       x: preset.target[0],
       y: preset.target[1],
@@ -102,6 +103,27 @@ export class CameraDirector {
       overwrite: true,
       onUpdate: () => this.camera.updateProjectionMatrix(),
     });
+  }
+
+  update(time: number) {
+    if (this.sectionRange === undefined) {
+      return;
+    }
+
+    const { section, startTime, endTime } = this.sectionRange;
+    const duration = endTime - startTime;
+    const progress = duration > 0
+      ? THREE.MathUtils.clamp((time - startTime) / duration, 0, 1)
+      : 1;
+    const from = this.getPreset(section).position;
+    const to = this.getPreset(NEXT_SECTION[section]).position;
+
+    this.camera.position.set(
+      THREE.MathUtils.lerp(from[0], to[0], progress),
+      THREE.MathUtils.lerp(from[1], to[1], progress),
+      THREE.MathUtils.lerp(from[2], to[2], progress),
+    );
+    this.camera.lookAt(this.target);
   }
 
   dispose() {

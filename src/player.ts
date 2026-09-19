@@ -1,7 +1,12 @@
 import { Sequencer, WorkletSynthesizer } from 'spessasynth_lib';
 
 import workletUrl from "spessasynth_lib/dist/spessasynth_processor.min.js?url";
-import { parseSectionMarker, type SectionMarker, type SectionName } from "./section";
+import {
+  parseSectionMarker,
+  type SectionMarker,
+  type SectionName,
+  type SectionRange,
+} from "./section";
 
 async function loadAsArrayBufferAsync(url: string) {
   const response = await fetch(url);
@@ -25,7 +30,7 @@ type PlayerEventHandlers = {
   onNoteOn: (event: NoteOnEvent) => void;
   onNoteOff: (event: NoteOffEvent) => void;
   onTimeChange: (time: number) => void;
-  onSectionChange: (section: SectionName) => void;
+  onSectionChange: (section: SectionRange) => void;
 };
 
 const EVENT_ID_VISUALIZER = "visualizer";
@@ -44,7 +49,7 @@ class Player {
   onNoteOn: (event: NoteOnEvent) => void;
   onNoteOff: (event: NoteOffEvent) => void;
   onTimeChange: (time: number) => void;
-  onSectionChange: (section: SectionName) => void;
+  onSectionChange: (section: SectionRange) => void;
   sectionMarkers: SectionMarker[];
   private currentSection: SectionName | undefined;
   private intervalTimer: number | undefined;
@@ -124,8 +129,21 @@ class Player {
     if (section === this.currentSection) {
       return;
     }
+
+    const markerIndex = this.sectionMarkers.findIndex(
+      (marker) => marker.section === section,
+    );
+    const marker = this.sectionMarkers[markerIndex];
+    if (marker === undefined) {
+      return;
+    }
+
     this.currentSection = section;
-    this.onSectionChange(section);
+    this.onSectionChange({
+      section,
+      startTime: marker.time,
+      endTime: this.sectionMarkers[markerIndex + 1]?.time ?? this.seq.duration,
+    });
   }
 
   private async togglePlaybackAsync() {
