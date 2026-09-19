@@ -78,6 +78,14 @@ function calcMatrix(objectDummy: THREE.Object3D, now: number, noteState: NoteSta
 
 async function mainAsync() {
 
+  const resumeElement = document.querySelector<HTMLButtonElement>("#resume")!;
+  const statusElement = document.querySelector<HTMLElement>("#player-status")!;
+  resumeElement.disabled = true;
+  resumeElement.textContent = "Play";
+  resumeElement.setAttribute("aria-pressed", "false");
+  statusElement.setAttribute("role", "status");
+  statusElement.textContent = "Loading audio…";
+
   const scene = new THREE.Scene();
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambientLight);
@@ -199,4 +207,15 @@ async function mainAsync() {
 }
 
 
-mainAsync().catch((error) => console.error(error));
+mainAsync().catch((error) => {
+  console.error(error);
+  const resumeElement = document.querySelector<HTMLButtonElement>("#resume");
+  const statusElement = document.querySelector<HTMLElement>("#player-status");
+  if (resumeElement) {
+    resumeElement.disabled = true;
+  }
+  if (statusElement) {
+    statusElement.setAttribute("role", "alert");
+    statusElement.textContent = "Could not load audio. Reload the page to try again.";
+  }
+});

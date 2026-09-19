@@ -6,15 +6,25 @@
     <title>smf-animation-study</title>
   </head>
   <body>
-    <canvas id="view"></canvas>
-    <div class="p-player">
+    <canvas id="view" aria-label="MIDI note animation"></canvas>
+    <section class="p-player" aria-label="MIDI player">
       <div class="p-player__button-list">
-        <div class="p-player__button p-player__button--resume" id="resume">Resume</div>
+        <button
+          class="p-player__button p-player__button--resume"
+          id="resume"
+          type="button"
+          aria-pressed="false"
+          aria-describedby="player-status"
+          disabled
+        >Play</button>
       </div>
-      <div class="p-player__time">
-        <span class="p-player__current-time" data-role="current-time">?</span>/<span class="p-player__duration" data-role="duration">?</span>
+      <p class="p-player__status" id="player-status" role="status" aria-live="polite">Loading audio…</p>
+      <div class="p-player__time" aria-label="Playback time">
+        <span class="p-player__current-time" data-role="current-time">0.00</span>
+        <span aria-hidden="true"> / </span>
+        <span class="p-player__duration" data-role="duration">—</span>
       </div>
-    </div>
+    </section>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
