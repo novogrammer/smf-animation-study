@@ -2,6 +2,12 @@
 
 demo https://novogrammer.github.io/smf-animation-study/
 
+## 使用したMIDIについて
+
+- [Timeless Truths Libraryで公開されている「When the Saints Go Marching In」のMIDIファイル（SMF）](https://library.timelesstruths.org/music/When_the_Saints_Go_Marching_In/midi/)をダウンロードし、編集して使用した。
+- 演出と検証のため、ドラムパートを追加した。
+- ダウンロード元の譜面に誤りが見つかったため、該当箇所を修正した。
+
 ## MIDI制作上の注意
 
 - MIDIチャンネルは内部では0始まりで扱う。
