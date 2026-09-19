@@ -1,12 +1,12 @@
 import { createPlayerAsync } from './player';
 import { onHmrDispose } from './hmr_utils';
-import { ChannelVisualizer, MIDI_NOTE_COUNT, type NoteState } from './channel_visualizer';
+import { ChannelVisualizer } from './channel_visualizer';
+import { MidiNoteStateStore } from './midi_note_state';
 import './style.scss'
 import * as THREE from "three";
 
 // import gsap from "gsap";
 
-const MIDI_CHANNEL_COUNT = 16;
 const DISPLAY_CHANNELS = [
   { channel: 0, color: 0x00ff00, y: 0.4 },
   { channel: 1, color: 0x00aaff, y: -0.4 },
@@ -48,19 +48,7 @@ async function mainAsync() {
   handleResize();
   window.addEventListener("resize", handleResize);
 
-  const noteStates: NoteState[][] = Array.from(
-    { length: MIDI_CHANNEL_COUNT },
-    (_, channel) => Array.from(
-      { length: MIDI_NOTE_COUNT },
-      (_, midiNote): NoteState => ({
-        channel,
-        midiNote,
-        startedAt: null,
-        releasedAt: null,
-        velocity: 0,
-      }),
-    ),
-  );
+  const noteStateStore = new MidiNoteStateStore();
 
   const geometry = new THREE.BoxGeometry(0.05, 0.05, 0.05);
   const channelVisualizers: ChannelVisualizer[] = DISPLAY_CHANNELS.map(({ channel, color, y }) => {
@@ -69,27 +57,11 @@ async function mainAsync() {
       color,
       y,
       geometry,
-      noteStates: noteStates[channel],
+      noteStates: noteStateStore.getChannel(channel),
     });
     scene.add(visualizer.mesh);
     return visualizer;
   });
-
-  const warnedInvalidNoteEvents = new Set<string>();
-  const getNoteState = (channel: number, midiNote: number): NoteState | undefined => {
-    const noteState = noteStates[channel]?.[midiNote];
-    if (!noteState) {
-      const warningKey = `${channel}:${midiNote}`;
-      if (!warnedInvalidNoteEvents.has(warningKey)) {
-        warnedInvalidNoteEvents.add(warningKey);
-        console.warn("Ignoring MIDI note event outside the supported range", {
-          channel,
-          midiNote,
-        });
-      }
-    }
-    return noteState;
-  };
 
   camera.position.z = 5;
 
@@ -119,22 +91,16 @@ async function mainAsync() {
   player = await createPlayerAsync({
     onNoteOn: (event) => {
       console.log("noteOn", event);
-      const noteState = getNoteState(event.channel, event.midiNote);
-      if (!noteState) {
-        return;
-      }
-      noteState.startedAt = getCurrentTime();
-      noteState.releasedAt = null;
-      noteState.velocity = event.velocity;
+      noteStateStore.noteOn(
+        event.channel,
+        event.midiNote,
+        event.velocity,
+        getCurrentTime(),
+      );
     },
     onNoteOff: (event) => {
       console.log("noteOff", event);
-
-      const noteState = getNoteState(event.channel, event.midiNote);
-      if (!noteState) {
-        return;
-      }
-      noteState.releasedAt = getCurrentTime();
+      noteStateStore.noteOff(event.channel, event.midiNote, getCurrentTime());
     },
   });
 

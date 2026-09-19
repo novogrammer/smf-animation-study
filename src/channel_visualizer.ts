@@ -1,14 +1,5 @@
 import * as THREE from "three";
-
-export const MIDI_NOTE_COUNT = 128;
-
-export interface NoteState {
-  channel: number;
-  midiNote: number;
-  startedAt: number | null;
-  releasedAt: number | null;
-  velocity: number;
-}
+import { MIDI_NOTE_COUNT, type NoteState } from "./midi_note_state";
 
 type Adsr = {
   attack: number;

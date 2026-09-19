@@ -10,12 +10,12 @@ async function loadAsArrayBufferAsync(url: string) {
   return await response.arrayBuffer();
 }
 
-type NoteOnEvent = {
+export type NoteOnEvent = {
   midiNote: number;
   channel: number;
   velocity: number;
 };
-type NoteOffEvent = {
+export type NoteOffEvent = {
   midiNote: number;
   channel: number;
 };
