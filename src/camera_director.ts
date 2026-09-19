@@ -22,25 +22,25 @@ const CAMERA_PRESETS: Record<SectionName, CameraPreset> = {
   call: {
     position: [-1.1, 0.45, 4.3],
     target: [0.1, 0.05, 0],
-    fovScale: 0.9,
+    fovScale: 1,
     duration: 1.4,
   },
   response: {
     position: [1.1, -0.35, 4.3],
     target: [-0.1, -0.03, 0],
-    fovScale: 0.9,
+    fovScale: 1,
     duration: 1.4,
   },
   march: {
     position: [0, -0.55, 4],
     target: [0, 0.12, 0],
-    fovScale: 0.84,
+    fovScale: 1,
     duration: 1.6,
   },
   finale: {
     position: [0, 0.45, 6.2],
     target: [0, 0, 0],
-    fovScale: 1.08,
+    fovScale: 1,
     duration: 2.2,
   },
 };
