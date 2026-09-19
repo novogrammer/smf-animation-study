@@ -1,6 +1,7 @@
 import { Sequencer, WorkletSynthesizer } from 'spessasynth_lib';
 
 import workletUrl from "spessasynth_lib/dist/spessasynth_processor.min.js?url";
+import { parseSectionMarker, type SectionMarker, type SectionName } from "./section";
 
 async function loadAsArrayBufferAsync(url: string) {
   const response = await fetch(url);
@@ -24,9 +25,12 @@ type PlayerEventHandlers = {
   onNoteOn: (event: NoteOnEvent) => void;
   onNoteOff: (event: NoteOffEvent) => void;
   onTimeChange: (time: number) => void;
+  onSectionChange: (section: SectionName) => void;
 };
 
 const EVENT_ID_VISUALIZER = "visualizer";
+const MIDI_MARKER_STATUS = 0x06;
+const textDecoder = new TextDecoder();
 
 class Player {
   resumeElement = document.querySelector<HTMLButtonElement>("#resume")!;
@@ -40,6 +44,9 @@ class Player {
   onNoteOn: (event: NoteOnEvent) => void;
   onNoteOff: (event: NoteOffEvent) => void;
   onTimeChange: (time: number) => void;
+  onSectionChange: (section: SectionName) => void;
+  sectionMarkers: SectionMarker[];
+  private currentSection: SectionName | undefined;
   private intervalTimer: number | undefined;
   private disposed = false;
 
@@ -56,7 +63,8 @@ class Player {
     audioContext: AudioContext,
     synth: WorkletSynthesizer,
     seq: Sequencer,
-    { onNoteOn, onNoteOff, onTimeChange }: PlayerEventHandlers,
+    sectionMarkers: SectionMarker[],
+    { onNoteOn, onNoteOff, onTimeChange, onSectionChange }: PlayerEventHandlers,
   ) {
     this.audioContext = audioContext;
     this.synth = synth;
@@ -64,19 +72,28 @@ class Player {
     this.onNoteOn = onNoteOn;
     this.onNoteOff = onNoteOff;
     this.onTimeChange = onTimeChange;
+    this.onSectionChange = onSectionChange;
+    this.sectionMarkers = sectionMarkers;
     this.setupEvents();
   }
   setupEvents() {
 
     this.synth.eventHandler.addEvent("noteOn", EVENT_ID_VISUALIZER, this.onNoteOn);
     this.synth.eventHandler.addEvent("noteOff", EVENT_ID_VISUALIZER, this.onNoteOff);
-    this.seq.eventHandler.addEvent("timeChange", EVENT_ID_VISUALIZER, this.onTimeChange);
-    this.seq.eventHandler.addEvent("metaEvent",EVENT_ID_VISUALIZER,(event)=>{
-      if(event.event.statusByte==6){
-        const text = new TextDecoder().decode(event.event.data);
-        console.log("metaEvent Marker",text);
+    this.seq.eventHandler.addEvent("timeChange", EVENT_ID_VISUALIZER, (time) => {
+      this.onTimeChange(time);
+      this.syncSection(time);
+    });
+    this.seq.eventHandler.addEvent("metaEvent", EVENT_ID_VISUALIZER, ({ event }) => {
+      if (event.statusByte !== MIDI_MARKER_STATUS) {
+        return;
       }
-    })
+
+      const section = parseSectionMarker(textDecoder.decode(event.data));
+      if (section !== undefined) {
+        this.setSection(section);
+      }
+    });
     this.intervalTimer = window.setInterval(() => {
       this.updateTime();
     }, 100);
@@ -84,7 +101,23 @@ class Player {
     this.updateTime();
     this.resumeElement.disabled = false;
     this.statusElement.textContent = "Ready";
+    this.syncSection(this.seq.currentTime);
 
+  }
+
+  private syncSection(time: number) {
+    const marker = this.sectionMarkers.findLast((candidate) => candidate.time <= time);
+    if (marker !== undefined) {
+      this.setSection(marker.section);
+    }
+  }
+
+  private setSection(section: SectionName) {
+    if (section === this.currentSection) {
+      return;
+    }
+    this.currentSection = section;
+    this.onSectionChange(section);
   }
 
   private async togglePlaybackAsync() {
@@ -164,8 +197,20 @@ export async function createPlayerAsync(eventHandlers: PlayerEventHandlers): Pro
     // const midiFile = await loadAsArrayBufferAsync("./assets/smf/fur_Elise_WoO59_marker.mid");
     const midiFile = await loadAsArrayBufferAsync("./assets/smf/When_the_Saints_Go_Marching_In--novo.mid");
     seq.loadNewSongList([{ binary: midiFile }]);
+    const midi = await seq.getMIDI();
+    const sectionMarkers = midi.tracks
+      .flatMap((track) => track.events)
+      .filter((event) => event.statusByte === MIDI_MARKER_STATUS)
+      .map((event): SectionMarker | undefined => {
+        const section = parseSectionMarker(textDecoder.decode(event.data));
+        return section === undefined
+          ? undefined
+          : { section, time: midi.midiTicksToSeconds(event.ticks) };
+      })
+      .filter((marker): marker is SectionMarker => marker !== undefined)
+      .sort((a, b) => a.time - b.time);
 
-    return new Player(audioContext, synth, seq, eventHandlers);
+    return new Player(audioContext, synth, seq, sectionMarkers, eventHandlers);
   } catch (error) {
     synth?.disconnect();
     synth?.destroy();

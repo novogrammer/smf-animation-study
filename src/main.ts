@@ -2,6 +2,7 @@ import { createPlayerAsync } from './player';
 import { onHmrDispose } from './hmr_utils';
 import { ChannelVisualizer, type ChannelVisualizerLayout } from './channel_visualizer';
 import { MIDI_NOTE_COUNT, MidiNoteStateStore } from './midi_note_state';
+import { BASE_CAMERA_DISTANCE, CameraDirector } from './camera_director';
 import './style.scss'
 import * as THREE from "three";
 
@@ -36,7 +37,7 @@ async function mainAsync() {
   directionalLight.position.set(10, 10, 10);
   scene.add(directionalLight);
   const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-  camera.position.z = 5;
+  const cameraDirector = new CameraDirector(camera);
 
   const viewElement = document.querySelector<HTMLCanvasElement>("#view")!;
 
@@ -67,19 +68,19 @@ async function mainAsync() {
     const width = window.innerWidth;
     const height = window.innerHeight;
     const aspect = width / height;
-    const distance = camera.position.z - VISUALIZATION_PLANE_Z;
+    const distance = BASE_CAMERA_DISTANCE - VISUALIZATION_PLANE_Z;
     const requiredViewHeight = aspect >= 1
       ? MIN_VIEW_SIZE
       : MIN_VIEW_SIZE / aspect;
 
     camera.aspect = aspect;
-    camera.fov = THREE.MathUtils.radToDeg(
+    const baseFov = THREE.MathUtils.radToDeg(
       2 * Math.atan(requiredViewHeight / (2 * distance)),
     );
-    camera.updateProjectionMatrix();
+    cameraDirector.setBaseFov(baseFov);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
-    camera.getViewSize(distance, viewSize);
+    viewSize.set(requiredViewHeight * aspect, requiredViewHeight);
 
     channelVisualizers.forEach((visualizer, index) => {
       visualizer.setLayout(createChannelLayout(index));
@@ -116,6 +117,7 @@ async function mainAsync() {
     disposed = true;
     window.removeEventListener("resize", handleResize);
     renderer.setAnimationLoop(null);
+    cameraDirector.dispose();
 
     for (const visualizer of channelVisualizers) {
       visualizer.dispose();
@@ -142,6 +144,9 @@ async function mainAsync() {
     },
     onTimeChange: () => {
       noteStateStore.reset();
+    },
+    onSectionChange: (section) => {
+      cameraDirector.enterSection(section);
     },
   });
 
