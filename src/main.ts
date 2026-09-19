@@ -3,6 +3,7 @@ import { onHmrDispose } from './hmr_utils';
 import { ChannelVisualizer, type ChannelVisualizerLayout } from './channel_visualizer';
 import { MIDI_NOTE_COUNT, MidiNoteStateStore } from './midi_note_state';
 import { BASE_CAMERA_DISTANCE, CameraDirector } from './camera_director';
+import { StageRoom } from './stage_room';
 import './style.scss'
 import * as THREE from "three";
 
@@ -31,6 +32,8 @@ async function mainAsync() {
   statusElement.textContent = "Loading audio…";
 
   const scene = new THREE.Scene();
+  const stageRoom = new StageRoom();
+  scene.add(stageRoom.mesh);
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambientLight);
   const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
@@ -118,6 +121,7 @@ async function mainAsync() {
     window.removeEventListener("resize", handleResize);
     renderer.setAnimationLoop(null);
     cameraDirector.dispose();
+    stageRoom.dispose();
 
     for (const visualizer of channelVisualizers) {
       visualizer.dispose();
