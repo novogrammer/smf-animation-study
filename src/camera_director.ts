@@ -78,7 +78,7 @@ export class CameraDirector {
 
     const animationOptions = {
       duration: preset.duration,
-      ease: "power2.inOut",
+      ease: "power2.out",
       overwrite: true,
       onUpdate: () => this.camera.lookAt(this.target),
     };
@@ -98,7 +98,7 @@ export class CameraDirector {
     gsap.to(this.camera, {
       fov: this.baseFov * preset.fovScale,
       duration: preset.duration,
-      ease: "power2.inOut",
+      ease: "power2.out",
       overwrite: true,
       onUpdate: () => this.camera.updateProjectionMatrix(),
     });
