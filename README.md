@@ -2,6 +2,12 @@
 
 demo https://novogrammer.github.io/smf-animation-study/
 
+## 背景
+
+かつてはブラウザやプラグインでMIDIファイル（SMF）を直接再生できる環境もあったが、現在の一般的なブラウザにはSMFを再生する標準機能がない。そのため、この習作ではJavaScriptライブラリとサウンドフォントを使用し、Web Audio経由で再生している。
+
+ライブラリからNote On／Note OffやMarkerなどのイベントと、そのタイミングを取得できるため、SMFの再生時間に同期した演出を試しやすい。音楽と演出で同じ時間軸を使い、演出タイミングをJavaScript側へ秒数で重複定義せずに済む利点を確かめることを、この習作の目的としている。
+
 ## 使用したMIDIファイルについて
 
 - [Timeless Truths Libraryで公開されている「When the Saints Go Marching In」のMIDIファイル（SMF）](https://library.timelesstruths.org/music/When_the_Saints_Go_Marching_In/midi/)をダウンロードし、編集して使用した。
