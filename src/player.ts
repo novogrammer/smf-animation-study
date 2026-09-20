@@ -219,8 +219,6 @@ export async function createPlayerAsync(eventHandlers: PlayerEventHandlers): Pro
     await synth.soundBankManager.addSoundBank(sfFile, "main");
     const seq = new Sequencer(synth);
     seq.loopCount = Infinity;
-    // const midiFile = await loadAsArrayBufferAsync("./assets/smf/fur_Elise_WoO59.mid");
-    // const midiFile = await loadAsArrayBufferAsync("./assets/smf/fur_Elise_WoO59_marker.mid");
     const midiFile = await loadAsArrayBufferAsync("./assets/smf/When_the_Saints_Go_Marching_In--novo.mid");
     seq.loadNewSongList([{ binary: midiFile }]);
     const midi = await seq.getMIDI();
