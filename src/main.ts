@@ -1,5 +1,6 @@
-import { createPlayerAsync } from './player';
-import type { Playback } from './playback';
+import { PlayerControls } from './player';
+import { createSpessaSynthPlaybackAsync } from './spessasynth_playback';
+import type { Playback, PlaybackClock } from './playback';
 import { onHmrDispose } from './hmr_utils';
 import { ChannelVisualizer, type ChannelVisualizerLayout } from './channel_visualizer';
 import { MIDI_NOTE_COUNT, MidiNoteStateStore } from './midi_note_state';
@@ -122,9 +123,11 @@ async function mainAsync() {
   // }
 
 
-  let player: Playback | undefined;
+  let playback: Playback | undefined;
+  let playbackClock: PlaybackClock | undefined;
+  let playerControls: PlayerControls | undefined;
   let disposed = false;
-  const getCurrentTime = () => player?.currentTime ?? 0;
+  const getCurrentTime = () => playbackClock?.currentTime ?? 0;
 
   onHmrDispose(async () => {
     disposed = true;
@@ -139,10 +142,11 @@ async function mainAsync() {
     geometry.dispose();
     renderer.dispose();
 
-    await player?.dispose();
+    playerControls?.dispose();
+    await playback?.dispose();
   });
 
-  player = await createPlayerAsync({
+  playback = await createSpessaSynthPlaybackAsync({
     onNoteOn: (event) => {
       console.log("noteOn", event);
       noteStateStore.noteOn(
@@ -165,13 +169,20 @@ async function mainAsync() {
   });
 
   if (disposed) {
-    await player.dispose();
+    await playback.dispose();
     return;
   }
-  const activePlayer = player;
+  playbackClock = playback;
+  try {
+    playerControls = new PlayerControls(playback);
+  } catch (error) {
+    await playback.dispose();
+    throw error;
+  }
+  const clock: PlaybackClock = playbackClock;
 
   renderer.setAnimationLoop(() => {
-    const now = activePlayer.currentTime;
+    const now = clock.currentTime;
     cameraDirector.update(now);
     for (const visualizer of channelVisualizers) {
       visualizer.update(now);

@@ -1,13 +1,12 @@
-import type { Playback, PlaybackEventHandlers } from "./playback";
-import { createSpessaSynthPlaybackAsync } from "./spessasynth_playback";
+import type { PlaybackTransport } from "./playback";
 
 /** 再生方式に依存しない画面コントロール。 */
-class Player implements Playback {
+export class PlayerControls {
   private readonly resumeElement = document.querySelector<HTMLButtonElement>("#resume")!;
   private readonly statusElement = document.querySelector<HTMLElement>("#player-status")!;
   private readonly currentTimeElement = document.querySelector<HTMLElement>("[data-role='current-time']")!;
   private readonly durationElement = document.querySelector<HTMLElement>("[data-role='duration']")!;
-  private readonly playback: Playback;
+  private readonly playback: PlaybackTransport;
   private readonly intervalTimer: number;
   private disposed = false;
 
@@ -21,7 +20,7 @@ class Player implements Playback {
     });
   };
 
-  constructor(playback: Playback) {
+  constructor(playback: PlaybackTransport) {
     this.playback = playback;
     this.intervalTimer = window.setInterval(() => this.updateTime(), 100);
     this.resumeElement.addEventListener("click", this.handleResumeClick);
@@ -30,11 +29,7 @@ class Player implements Playback {
     this.statusElement.textContent = "Ready";
   }
 
-  get currentTime(): number { return this.playback.currentTime; }
-  get duration(): number { return this.playback.duration; }
-  get paused(): boolean { return this.playback.paused; }
-
-  async play(): Promise<void> {
+  private async play(): Promise<void> {
     if (this.disposed) return;
     this.resumeElement.disabled = true;
     this.statusElement.setAttribute("role", "status");
@@ -50,7 +45,7 @@ class Player implements Playback {
     }
   }
 
-  pause(): void {
+  private pause(): void {
     if (this.disposed) return;
     this.playback.pause();
     this.resumeElement.textContent = "Play";
@@ -59,32 +54,21 @@ class Player implements Playback {
   }
 
   private async togglePlaybackAsync() {
-    if (this.paused) await this.play();
+    if (this.playback.paused) await this.play();
     else this.pause();
   }
 
   private updateTime() {
-    this.currentTimeElement.textContent = this.currentTime.toFixed(2);
-    this.durationElement.textContent = this.duration.toFixed(2);
+    this.currentTimeElement.textContent = this.playback.currentTime.toFixed(2);
+    this.durationElement.textContent = this.playback.duration.toFixed(2);
   }
 
-  async dispose(): Promise<void> {
+  dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     this.resumeElement.removeEventListener("click", this.handleResumeClick);
     clearInterval(this.intervalTimer);
     this.resumeElement.disabled = true;
     this.resumeElement.setAttribute("aria-pressed", "false");
-    await this.playback.dispose();
-  }
-}
-
-export async function createPlayerAsync(eventHandlers: PlaybackEventHandlers): Promise<Playback> {
-  const playback = await createSpessaSynthPlaybackAsync(eventHandlers);
-  try {
-    return new Player(playback);
-  } catch (error) {
-    await playback.dispose();
-    throw error;
   }
 }
