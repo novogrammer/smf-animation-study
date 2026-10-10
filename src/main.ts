@@ -1,4 +1,6 @@
 import { PlayerControls } from './player';
+import { createSpessaSynthPlaybackAsync } from './spessasynth_playback';
+import { createNoAudioPlaybackAsync } from './noaudio_playback';
 import { readPlaybackOptions, type PlayerKind } from './playback_options';
 import type { Playback, PlaybackClock, PlaybackEventHandlers } from './playback';
 import { onHmrDispose } from './hmr_utils';
@@ -195,10 +197,9 @@ async function mainAsync() {
       },
     };
     try {
-      // noaudioでは音声プレイヤーのモジュールも読み込まない。
       const next = kind === "audio"
-        ? await (await import("./spessasynth_playback")).createSpessaSynthPlaybackAsync(handlers)
-        : await (await import("./noaudio_playback")).createNoAudioPlaybackAsync(handlers);
+        ? await createSpessaSynthPlaybackAsync(handlers)
+        : await createNoAudioPlaybackAsync(handlers);
       if (disposed || revision !== loadRevision) {
         await next.dispose();
         return;
