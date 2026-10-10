@@ -13,10 +13,7 @@ export class PlayerControls {
   private readonly handleResumeClick = () => {
     this.togglePlaybackAsync().catch((error) => {
       if (this.disposed) return;
-      console.error(error);
-      this.statusElement.textContent = "Playback failed. Try again.";
-      this.statusElement.setAttribute("role", "alert");
-      this.resumeElement.disabled = false;
+      this.showPlaybackError(error);
     });
   };
 
@@ -25,15 +22,40 @@ export class PlayerControls {
     this.intervalTimer = window.setInterval(() => this.updateTime(), 100);
     this.resumeElement.addEventListener("click", this.handleResumeClick);
     this.updateTime();
+    this.resumeElement.textContent = "Play";
+    this.resumeElement.setAttribute("aria-pressed", "false");
+    this.statusElement.setAttribute("role", "status");
     this.resumeElement.disabled = false;
     this.statusElement.textContent = "Ready";
+  }
+
+  async tryAutoplay(): Promise<void> {
+    try {
+      await this.play();
+    } catch (error) {
+      if (!this.disposed) this.showPlaybackError(error);
+    }
+  }
+
+  private showPlaybackError(error: unknown) {
+    this.resumeElement.textContent = "Play";
+    this.resumeElement.setAttribute("aria-pressed", "false");
+    this.resumeElement.disabled = false;
+    if (error instanceof DOMException && error.name === "NotAllowedError") {
+      this.statusElement.textContent = "Press Play to start playback.";
+      this.statusElement.setAttribute("role", "status");
+    } else {
+      console.error(error);
+      this.statusElement.textContent = "Playback failed. Try again.";
+      this.statusElement.setAttribute("role", "alert");
+    }
   }
 
   private async play(): Promise<void> {
     if (this.disposed) return;
     this.resumeElement.disabled = true;
     this.statusElement.setAttribute("role", "status");
-    this.statusElement.textContent = "Starting audio…";
+    this.statusElement.textContent = "Starting…";
     try {
       await this.playback.play();
       if (this.disposed) return;

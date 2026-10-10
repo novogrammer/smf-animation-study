@@ -10,9 +10,10 @@ export type NoteOffEvent = {
   channel: number;
 };
 
+/** Noteのtimeは、再生元が通知する秒単位の曲内時刻。 */
 export type PlaybackEventHandlers = {
-  onNoteOn: (event: NoteOnEvent) => void;
-  onNoteOff: (event: NoteOffEvent) => void;
+  onNoteOn: (event: NoteOnEvent, time: number) => void;
+  onNoteOff: (event: NoteOffEvent, time: number) => void;
   /** シークやループで再生位置が変わったときの状態リセット用。 */
   onTimeChange: (time: number) => void;
   onSectionChange: (section: SectionRange) => void;

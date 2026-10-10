@@ -1,6 +1,6 @@
 import { PlayerControls } from './player';
-import { createSpessaSynthPlaybackAsync } from './spessasynth_playback';
-import type { Playback, PlaybackClock } from './playback';
+import { readPlaybackOptions, type PlayerKind } from './playback_options';
+import type { Playback, PlaybackClock, PlaybackEventHandlers } from './playback';
 import { onHmrDispose } from './hmr_utils';
 import { ChannelVisualizer, type ChannelVisualizerLayout } from './channel_visualizer';
 import { MIDI_NOTE_COUNT, MidiNoteStateStore } from './midi_note_state';
@@ -31,7 +31,10 @@ async function mainAsync() {
   resumeElement.textContent = "Play";
   resumeElement.setAttribute("aria-pressed", "false");
   statusElement.setAttribute("role", "status");
-  statusElement.textContent = "Loading audio…";
+  statusElement.textContent = "Loading…";
+  const modeElement = document.querySelector<HTMLSelectElement>("#player-mode")!;
+  const options = readPlaybackOptions(window.location.search);
+  modeElement.value = options.player;
 
   const scene = new THREE.Scene();
   const stageRoom = new StageRoom();
@@ -127,10 +130,12 @@ async function mainAsync() {
   let playbackClock: PlaybackClock | undefined;
   let playerControls: PlayerControls | undefined;
   let disposed = false;
-  const getCurrentTime = () => playbackClock?.currentTime ?? 0;
+  let loadRevision = 0;
 
   onHmrDispose(async () => {
     disposed = true;
+    loadRevision++;
+    modeElement.removeEventListener("change", handleModeChange);
     window.removeEventListener("resize", handleResize);
     renderer.setAnimationLoop(null);
     cameraDirector.dispose();
@@ -146,43 +151,82 @@ async function mainAsync() {
     await playback?.dispose();
   });
 
-  playback = await createSpessaSynthPlaybackAsync({
-    onNoteOn: (event) => {
-      console.log("noteOn", event);
-      noteStateStore.noteOn(
-        event.channel,
-        event.midiNote,
-        event.velocity,
-        getCurrentTime(),
-      );
-    },
-    onNoteOff: (event) => {
-      console.log("noteOff", event);
-      noteStateStore.noteOff(event.channel, event.midiNote, getCurrentTime());
-    },
-    onTimeChange: () => {
-      noteStateStore.reset();
-    },
-    onSectionChange: (sectionRange) => {
-      cameraDirector.enterSection(sectionRange);
-    },
-  });
+  const showLoadError = (error: unknown) => {
+    if (disposed) return;
+    console.error(error);
+    statusElement.setAttribute("role", "alert");
+    statusElement.textContent = "Could not load player. Select a player to try again.";
+    resumeElement.disabled = true;
+  };
 
-  if (disposed) {
-    await playback.dispose();
-    return;
+  const selectPlayback = async (kind: PlayerKind, autoplay = false) => {
+    const revision = ++loadRevision;
+    playerControls?.dispose();
+    playerControls = undefined;
+    const previous = playback;
+    playback = undefined;
+    playbackClock = undefined;
+    resumeElement.disabled = true;
+    resumeElement.textContent = "Play";
+    resumeElement.setAttribute("aria-pressed", "false");
+    statusElement.setAttribute("role", "status");
+    statusElement.textContent = "Loading…";
+    document.querySelector<HTMLElement>("[data-role='current-time']")!.textContent = "0.00";
+    document.querySelector<HTMLElement>("[data-role='duration']")!.textContent = "—";
+    await previous?.dispose();
+    if (disposed || revision !== loadRevision) return;
+    noteStateStore.reset();
+    cameraDirector.reset();
+
+    const handlers: PlaybackEventHandlers = {
+      onNoteOn: (event, time) => {
+        if (disposed || revision !== loadRevision) return;
+        noteStateStore.noteOn(event.channel, event.midiNote, event.velocity, time);
+      },
+      onNoteOff: (event, time) => {
+        if (disposed || revision !== loadRevision) return;
+        noteStateStore.noteOff(event.channel, event.midiNote, time);
+      },
+      onTimeChange: () => {
+        if (!disposed && revision === loadRevision) noteStateStore.reset();
+      },
+      onSectionChange: (sectionRange) => {
+        if (!disposed && revision === loadRevision) cameraDirector.enterSection(sectionRange);
+      },
+    };
+    try {
+      // noaudioでは音声プレイヤーのモジュールも読み込まない。
+      const next = kind === "audio"
+        ? await (await import("./spessasynth_playback")).createSpessaSynthPlaybackAsync(handlers)
+        : await (await import("./noaudio_playback")).createNoAudioPlaybackAsync(handlers);
+      if (disposed || revision !== loadRevision) {
+        await next.dispose();
+        return;
+      }
+      playback = next;
+      playbackClock = next;
+      try {
+        playerControls = new PlayerControls(next);
+      } catch (error) {
+        playback = undefined;
+        playbackClock = undefined;
+        await next.dispose();
+        throw error;
+      }
+      if (autoplay) await playerControls.tryAutoplay();
+    } catch (error) {
+      if (revision === loadRevision) showLoadError(error);
+    }
+  };
+
+  function handleModeChange() {
+    const kind = modeElement.value === "noaudio" ? "noaudio" : "audio";
+    void selectPlayback(kind);
   }
-  playbackClock = playback;
-  try {
-    playerControls = new PlayerControls(playback);
-  } catch (error) {
-    await playback.dispose();
-    throw error;
-  }
-  const clock: PlaybackClock = playbackClock;
+  modeElement.addEventListener("change", handleModeChange);
 
   renderer.setAnimationLoop(() => {
-    const now = clock.currentTime;
+    const now = playbackClock?.currentTime ?? 0;
     cameraDirector.update(now);
     for (const visualizer of channelVisualizers) {
       visualizer.update(now);
@@ -190,9 +234,9 @@ async function mainAsync() {
 
     renderer.render(scene, camera);
 
-  })
+  });
 
-
+  await selectPlayback(options.player, options.autoplay);
 }
 
 
@@ -205,6 +249,6 @@ mainAsync().catch((error) => {
   }
   if (statusElement) {
     statusElement.setAttribute("role", "alert");
-    statusElement.textContent = "Could not load audio. Reload the page to try again.";
+    statusElement.textContent = "Could not load player. Reload the page to try again.";
   }
 });

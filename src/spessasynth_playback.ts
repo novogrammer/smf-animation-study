@@ -11,8 +11,6 @@ import {
 import type {
   Playback,
   PlaybackEventHandlers,
-  NoteOnEvent,
-  NoteOffEvent,
 } from "./playback";
 
 async function loadAsArrayBufferAsync(url: string) {
@@ -31,8 +29,8 @@ class SpessaSynthPlayback implements Playback {
   private audioContext: AudioContext;
   private synth: WorkletSynthesizer;
   private seq: Sequencer;
-  private onNoteOn: (event: NoteOnEvent) => void;
-  private onNoteOff: (event: NoteOffEvent) => void;
+  private onNoteOn: PlaybackEventHandlers["onNoteOn"];
+  private onNoteOff: PlaybackEventHandlers["onNoteOff"];
   private onTimeChange: (time: number) => void;
   private onSectionChange: (section: SectionRange) => void;
   private sectionMarkers: SectionMarker[];
@@ -58,8 +56,12 @@ class SpessaSynthPlayback implements Playback {
   }
   private setupEvents() {
 
-    this.synth.eventHandler.addEvent("noteOn", EVENT_ID_VISUALIZER, this.onNoteOn);
-    this.synth.eventHandler.addEvent("noteOff", EVENT_ID_VISUALIZER, this.onNoteOff);
+    this.synth.eventHandler.addEvent("noteOn", EVENT_ID_VISUALIZER, (event) => {
+      this.onNoteOn(event, this.currentTime);
+    });
+    this.synth.eventHandler.addEvent("noteOff", EVENT_ID_VISUALIZER, (event) => {
+      this.onNoteOff(event, this.currentTime);
+    });
     this.seq.eventHandler.addEvent("timeChange", EVENT_ID_VISUALIZER, (time) => {
       this.onTimeChange(time);
       this.syncSection(time);
@@ -128,7 +130,24 @@ class SpessaSynthPlayback implements Playback {
 
   async play(): Promise<void> {
     if (this.disposed) return;
-    await this.audioContext.resume();
+    // resume()は自動再生が拒否されると未解決のままになる場合がある。
+    // 待機時間を制限し、UIをPlay待ちへ戻せるようにする。
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        this.audioContext.resume(),
+        new Promise<never>((_, reject) => {
+          timeout = setTimeout(() => {
+            reject(new DOMException("Audio playback needs user interaction.", "NotAllowedError"));
+          }, 1500);
+        }),
+      ]);
+      if (!this.disposed && this.audioContext.state !== "running") {
+        throw new DOMException("Audio playback needs user interaction.", "NotAllowedError");
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!this.disposed) this.seq.play();
   }
 

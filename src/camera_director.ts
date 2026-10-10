@@ -126,6 +126,13 @@ export class CameraDirector {
     this.camera.lookAt(this.target);
   }
 
+  reset() {
+    this.killTweens();
+    this.currentSection = "intro";
+    this.sectionRange = undefined;
+    this.applyPreset("intro");
+  }
+
   dispose() {
     this.killTweens();
   }

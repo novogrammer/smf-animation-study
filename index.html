@@ -8,6 +8,13 @@
   <body>
     <canvas id="view" aria-label="MIDI note animation"></canvas>
     <section class="p-player" aria-label="MIDI player">
+      <label class="p-player__mode" for="player-mode">
+        <span>Player</span>
+        <select id="player-mode">
+          <option value="audio">Audio</option>
+          <option value="noaudio">No audio</option>
+        </select>
+      </label>
       <div class="p-player__button-list">
         <button
           class="p-player__button p-player__button--resume"
@@ -18,7 +25,7 @@
           disabled
         >Play</button>
       </div>
-      <p class="p-player__status" id="player-status" role="status" aria-live="polite">Loading audio…</p>
+      <p class="p-player__status" id="player-status" role="status" aria-live="polite">Loading…</p>
       <div class="p-player__time" aria-label="Playback time">
         <span class="p-player__current-time" data-role="current-time">0.00</span>
         <span aria-hidden="true"> / </span>
