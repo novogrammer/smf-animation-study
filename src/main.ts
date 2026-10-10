@@ -1,4 +1,5 @@
 import { createPlayerAsync } from './player';
+import type { Playback } from './playback';
 import { onHmrDispose } from './hmr_utils';
 import { ChannelVisualizer, type ChannelVisualizerLayout } from './channel_visualizer';
 import { MIDI_NOTE_COUNT, MidiNoteStateStore } from './midi_note_state';
@@ -121,9 +122,9 @@ async function mainAsync() {
   // }
 
 
-  let player: Awaited<ReturnType<typeof createPlayerAsync>> | undefined;
+  let player: Playback | undefined;
   let disposed = false;
-  const getCurrentTime = () => player?.seq.currentHighResolutionTime ?? 0;
+  const getCurrentTime = () => player?.currentTime ?? 0;
 
   onHmrDispose(async () => {
     disposed = true;
@@ -170,7 +171,7 @@ async function mainAsync() {
   const activePlayer = player;
 
   renderer.setAnimationLoop(() => {
-    const now = activePlayer.seq.currentHighResolutionTime;
+    const now = activePlayer.currentTime;
     cameraDirector.update(now);
     for (const visualizer of channelVisualizers) {
       visualizer.update(now);

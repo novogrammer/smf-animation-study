@@ -29,8 +29,10 @@ demo https://novogrammer.github.io/smf-animation-study/
 
 ## Web Audioについて
 
+- 描画側は`Playback`インターフェースを通して再生時刻とイベントを受け取り、Synth／Sequencerを直接参照しない。
+- `spessasynth_playback.ts`がSMF・音声再生・イベント通知を担当し、`player.ts`が再生ボタンと時間表示を担当する。現在の実装では音声側の高精度時計とイベントを引き続き使い、音と演出の同期を維持している。
 - ブラウザの自動再生制限に対応するため、ユーザーがPlayを押したタイミングで`AudioContext`を再開する。
-- ユーザー操作なしでMIDIベースの演出だけを動かす用途では、SMFの解析・タイミング処理とWeb Audioによる音声再生を分離する設計が考えられる。
+- ユーザー操作なしでMIDIベースの演出だけを動かす用途では、同じ`Playback`インターフェースに対応した、SMFの解析と独自時計によるプレイヤーを追加する設計が考えられる。現在はWeb Audioで音を鳴らす実装のみを用意している。
 
 ## MIDIの扱いに関する注意
 
